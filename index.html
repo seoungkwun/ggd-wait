@@ -26,16 +26,13 @@
 
   <script>
     async function loadData() {
-      document.querySelector("#dataTable tbody").innerHTML = '<tr><td colspan="3">불러오는 중...</td></tr>';
+      const tbody = document.querySelector("#dataTable tbody");
+      tbody.innerHTML = '<tr><td colspan="3">불러오는 중...</td></tr>';
       try {
-        const res = await fetch("https://ggsts.gg.go.kr/receipt/getTotalWaitInfo.json", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
-          body: "TR=GA11130"
-        });
+        const res = await fetch("/api/waitinfo");
         const data = await res.json();
         if (data.RESCODE !== "0000" || !data.RESULT?.LIST) {
-          document.querySelector("#dataTable tbody").innerHTML = '<tr><td colspan="3">데이터를 불러올 수 없습니다.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="3">데이터를 불러올 수 없습니다.</td></tr>';
           return;
         }
         let list = data.RESULT.LIST;
@@ -44,7 +41,6 @@
         rest.sort((a, b) => b.NUM_WAIT - a.NUM_WAIT);
         const finalList = uj ? [uj, ...rest] : rest;
 
-        const tbody = document.querySelector("#dataTable tbody");
         tbody.innerHTML = finalList.map(r =>
           `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`
         ).join("");
@@ -52,7 +48,7 @@
         const now = new Date();
         document.querySelector("#time").innerText = "조회 시각: " + now.toLocaleString("ko-KR");
       } catch (e) {
-        document.querySelector("#dataTable tbody").innerHTML = '<tr><td colspan="3">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>';
       }
     }
     loadData();

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>경기도 장애인콜 대기현황</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    table { border-collapse: collapse; margin: 20px auto; width: 90%; max-width: 600px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background: #f0f0f0; }
+    button { margin-top: 10px; padding: 8px 16px; font-size: 16px; cursor: pointer; }
+    #time { margin-top: 10px; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>경기도 장애인콜 대기현황</h1>
+  <button onclick="loadData()">🔁 새로고침</button>
+  <div id="time"></div>
+  <table id="dataTable">
+    <thead>
+      <tr><th>시군명</th><th>운행대수</th><th>대기인원</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function loadData() {
+      document.querySelector("#dataTable tbody").innerHTML = '<tr><td colspan="3">불러오는 중...</td></tr>';
+      try {
+        const res = await fetch("https://ggsts.gg.go.kr/receipt/getTotalWaitInfo.json", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+          body: "TR=GA11130"
+        });
+        const data = await res.json();
+        if (data.RESCODE !== "0000" || !data.RESULT?.LIST) {
+          document.querySelector("#dataTable tbody").innerHTML = '<tr><td colspan="3">데이터를 불러올 수 없습니다.</td></tr>';
+          return;
+        }
+        let list = data.RESULT.LIST;
+        const uj = list.find(x => x.LNAME.includes("의정부"));
+        let rest = list.filter(x => !x.LNAME.includes("의정부"));
+        rest.sort((a, b) => b.NUM_WAIT - a.NUM_WAIT);
+        const finalList = uj ? [uj, ...rest] : rest;
+
+        const tbody = document.querySelector("#dataTable tbody");
+        tbody.innerHTML = finalList.map(r =>
+          `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`
+        ).join("");
+
+        const now = new Date();
+        document.querySelector("#time").innerText = "조회 시각: " + now.toLocaleString("ko-KR");
+      } catch (e) {
+        document.querySelector("#dataTable tbody").innerHTML = '<tr><td colspan="3">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>';
+      }
+    }
+    loadData();
+  </script>
+</body>
+</html>

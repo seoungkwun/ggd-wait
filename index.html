@@ -35,11 +35,14 @@
           tbody.innerHTML = '<tr><td colspan="3">데이터를 불러올 수 없습니다.</td></tr>';
           return;
         }
+
         let list = data.RESULT.LIST;
-        const uj = list.find(x => x.LNAME.includes("의정부"));
-        let rest = list.filter(x => !x.LNAME.includes("의정부"));
-        rest.sort((a, b) => b.NUM_WAIT - a.NUM_WAIT);
-        const finalList = uj ? [uj, ...rest] : rest;
+        const priority = ["의정부시", "양주시", "동두천시", "포천시", "연천군", "파주시"];
+        let priorityList = list.filter(x => priority.includes(x.LNAME))
+          .sort((a, b) => priority.indexOf(a.LNAME) - priority.indexOf(b.LNAME));
+        let others = list.filter(x => !priority.includes(x.LNAME))
+          .sort((a, b) => b.NUM_WAIT - a.NUM_WAIT);
+        let finalList = [...priorityList, ...others];
 
         tbody.innerHTML = finalList.map(r =>
           `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`

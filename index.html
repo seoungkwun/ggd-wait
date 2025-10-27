@@ -6,7 +6,7 @@
   <title>경기도 장애인콜 대기현황</title>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    table { border-collapse: collapse; margin: 20px auto; width: 90%; max-width: 600px; }
+    table { border-collapse: collapse; margin: 20px auto; width: 90%; max-width: 720px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     th { background: #f0f0f0; }
     button { margin-top: 10px; padding: 8px 16px; font-size: 16px; cursor: pointer; }
@@ -37,17 +37,32 @@
         }
 
         let list = data.RESULT.LIST;
-        const priority = ["의정부시", "양주시", "동두천시", "포천시", "연천군", "파주시"];
-        let priorityList = list.filter(x => priority.includes(x.LNAME))
+
+        // ✅ 상단 고정 순서 (8개)
+        const priority = [
+          "의정부시", "양주시", "동두천시", "포천시",
+          "남양주시", "연천군", "고양시", "파주시"
+        ];
+
+        // 우선순위 지역 먼저 고정 순서대로
+        let priorityList = list
+          .filter(x => priority.includes(x.LNAME))
           .sort((a, b) => priority.indexOf(a.LNAME) - priority.indexOf(b.LNAME));
-        let others = list.filter(x => !priority.includes(x.LNAME))
-          .sort((a, b) => b.NUM_WAIT - a.NUM_WAIT);
+
+        // 나머지는 시군명 가나다(오름차순)
+        let others = list
+          .filter(x => !priority.includes(x.LNAME))
+          .sort((a, b) => a.LNAME.localeCompare(b.LNAME, "ko"));
+
+        // 병합
         let finalList = [...priorityList, ...others];
 
+        // 표 출력
         tbody.innerHTML = finalList.map(r =>
           `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`
         ).join("");
 
+        // 조회 시각
         const now = new Date();
         document.querySelector("#time").innerText = "조회 시각: " + now.toLocaleString("ko-KR");
       } catch (e) {

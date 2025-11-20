@@ -4,71 +4,153 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>경기도 장애인콜 대기현황</title>
+
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    table { border-collapse: collapse; margin: 20px auto; width: 90%; max-width: 720px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    th { background: #f0f0f0; }
-    button { margin-top: 10px; padding: 8px 16px; font-size: 16px; cursor: pointer; }
-    #time { margin-top: 10px; color: #666; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      text-align: center;
+      padding: 16px;
+      background: #f8f8f8;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    #time {
+      text-align: center;
+      padding: 6px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    button {
+      display: block;
+      margin: 10px auto;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: row;
+      gap: 15px;
+      padding: 10px;
+    }
+
+    .column {
+      flex: 1;
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 8px;
+      background: #fafafa;
+      overflow-y: auto;
+      max-height: calc(100vh - 200px);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background: #eaeaea;
+    }
+
+    h2 {
+      text-align: center;
+      margin: 5px 0;
+      font-size: 20px;
+    }
   </style>
 </head>
+
 <body>
-  <h1>경기도 장애인콜 대기현황</h1>
+  <header>경기도 장애인콜 대기현황</header>
+
   <button onclick="loadData()">🔁 새로고침</button>
   <div id="time"></div>
-  <table id="dataTable">
-    <thead>
-      <tr><th>시군명</th><th>운행대수</th><th>대기인원</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+
+  <div class="container">
+    <div class="column">
+      <h2>주요 8개 시군</h2>
+      <table>
+        <thead>
+          <tr><th>시군명</th><th>운행</th><th>대기</th></tr>
+        </thead>
+        <tbody id="fixedList"></tbody>
+      </table>
+    </div>
+
+    <div class="column">
+      <h2>그 외 시군 (가나다순)</h2>
+      <table>
+        <thead>
+          <tr><th>시군명</th><th>운행</th><th>대기</th></tr>
+        </thead>
+        <tbody id="othersList"></tbody>
+      </table>
+    </div>
+  </div>
 
   <script>
     async function loadData() {
-      const tbody = document.querySelector("#dataTable tbody");
-      tbody.innerHTML = '<tr><td colspan="3">불러오는 중...</td></tr>';
+      document.getElementById("fixedList").innerHTML =
+        '<tr><td colspan="3">불러오는 중...</td></tr>';
+      document.getElementById("othersList").innerHTML =
+        '<tr><td colspan="3">불러오는 중...</td></tr>';
+
       try {
         const res = await fetch("/api/waitinfo");
         const data = await res.json();
-        if (data.RESCODE !== "0000" || !data.RESULT?.LIST) {
-          tbody.innerHTML = '<tr><td colspan="3">데이터를 불러올 수 없습니다.</td></tr>';
+        if (data.RESCODE !== "0000") {
+          alert("API 오류 발생");
           return;
         }
 
         let list = data.RESULT.LIST;
 
-        // ✅ 상단 고정 순서 (8개)
         const priority = [
           "의정부시", "양주시", "동두천시", "포천시",
           "남양주시", "연천군", "고양시", "파주시"
         ];
 
-        // 우선순위 지역 먼저 고정 순서대로
-        let priorityList = list
+        let fixed = list
           .filter(x => priority.includes(x.LNAME))
           .sort((a, b) => priority.indexOf(a.LNAME) - priority.indexOf(b.LNAME));
 
-        // 나머지는 시군명 가나다(오름차순)
         let others = list
           .filter(x => !priority.includes(x.LNAME))
           .sort((a, b) => a.LNAME.localeCompare(b.LNAME, "ko"));
 
-        // 병합
-        let finalList = [...priorityList, ...others];
+        document.getElementById("fixedList").innerHTML = fixed
+          .map(r => `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`)
+          .join("");
 
-        // 표 출력
-        tbody.innerHTML = finalList.map(r =>
-          `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`
-        ).join("");
+        document.getElementById("othersList").innerHTML = others
+          .map(r => `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`)
+          .join("");
 
-        // 조회 시각
         const now = new Date();
-        document.querySelector("#time").innerText = "조회 시각: " + now.toLocaleString("ko-KR");
-      } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="3">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>';
+        document.getElementById("time").innerText =
+          "조회 시각: " + now.toLocaleString("ko-KR");
+
+      } catch (err) {
+        alert("데이터 로딩 오류: " + err);
       }
     }
+
     loadData();
   </script>
 </body>

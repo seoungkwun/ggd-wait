@@ -6,81 +6,56 @@
   <title>경기도 장애인콜 대기현황</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
     html, body {
       margin: 0;
       padding: 0;
-      overflow-x: hidden; /* 가로 스크롤 완전 차단 */
+      overflow-x: hidden;
       font-family: Arial, sans-serif;
     }
 
     header {
       text-align: center;
-      padding: 8px;
-      background: #f8f8f8;
-      font-size: 18px;
+      padding: 10px;
+      background: #f2f2f2;
+      font-size: 20px;
       font-weight: bold;
     }
 
     #time {
       text-align: center;
       padding: 4px;
+      font-size: 13px;
       color: #666;
-      font-size: 12px;
     }
 
     button {
       display: block;
-      margin: 6px auto;
-      padding: 6px 12px;
-      font-size: 13px;
-      cursor: pointer;
+      margin: 8px auto;
+      padding: 6px 14px;
+      font-size: 14px;
     }
 
-    /* 2-column layout */
     .container {
-      display: flex;
-      flex-direction: row;
-      width: 100vw;
-      padding: 2px;
-      gap: 2px;
-    }
-
-    .column {
-      width: 50%;
-      border: 1px solid #ccc;
+      width: 100%;
       padding: 4px;
-      border-radius: 4px;
-      background: #fafafa;
-      overflow-y: auto;
-      max-height: calc(100vh - 170px);
+      box-sizing: border-box;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 11px; /* 전체 글자 크기 줄이기 */
+      font-size: 13px;
     }
 
     th, td {
       border: 1px solid #ccc;
-      padding: 2px 1px; /* 상하/좌우 패딩 최소화 */
+      padding: 4px;
       text-align: center;
-      white-space: nowrap; /* 줄바꿈 방지 → 폭 예측 가능 */
+      white-space: nowrap;
     }
 
     th {
-      background: #eaeaea;
-      font-size: 11px;
-    }
-
-    h2 {
-      text-align: center;
-      margin: 2px 0;
-      font-size: 14px;
+      background: #e5e5e5;
     }
   </style>
 </head>
@@ -92,39 +67,26 @@
   <div id="time"></div>
 
   <div class="container">
-    <div class="column">
-      <h2>주요 8개 시군</h2>
-      <table>
-        <thead>
-          <tr><th>시군명</th><th>운행</th><th>대기</th></tr>
-        </thead>
-        <tbody id="fixedList"></tbody>
-      </table>
-    </div>
-
-    <div class="column">
-      <h2>그 외 시군 (가나다순)</h2>
-      <table>
-        <thead>
-          <tr><th>시군명</th><th>운행</th><th>대기</th></tr>
-        </thead>
-        <tbody id="othersList"></tbody>
-      </table>
-    </div>
+    <table>
+      <thead>
+        <tr><th>시군명</th><th>운행</th><th>대기</th></tr>
+      </thead>
+      <tbody id="fullList"></tbody>
+    </table>
   </div>
 
   <script>
     async function loadData() {
-      document.getElementById("fixedList").innerHTML =
-        '<tr><td colspan="3">불러오는 중...</td></tr>';
-      document.getElementById("othersList").innerHTML =
+      document.getElementById("fullList").innerHTML =
         '<tr><td colspan="3">불러오는 중...</td></tr>';
 
       try {
         const res = await fetch("/api/waitinfo");
         const data = await res.json();
+
         if (data.RESCODE !== "0000" || !data.RESULT?.LIST) {
-          alert("API 오류 또는 데이터 없음");
+          document.getElementById("fullList").innerHTML =
+            '<tr><td colspan="3">데이터 오류</td></tr>';
           return;
         }
 
@@ -143,20 +105,18 @@
           .filter(x => !priority.includes(x.LNAME))
           .sort((a, b) => a.LNAME.localeCompare(b.LNAME, "ko"));
 
-        document.getElementById("fixedList").innerHTML = fixed
+        let finalList = [...fixed, ...others];
+
+        document.getElementById("fullList").innerHTML = finalList
           .map(r => `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`)
           .join("");
 
-        document.getElementById("othersList").innerHTML = others
-          .map(r => `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`)
-          .join("");
-
-        const now = new Date();
         document.getElementById("time").innerText =
-          "조회 시각: " + now.toLocaleString("ko-KR");
+          "조회 시각: " + new Date().toLocaleString("ko-KR");
 
       } catch (err) {
-        alert("데이터 로딩 오류: " + err);
+        document.getElementById("fullList").innerHTML =
+          '<tr><td colspan="3">로딩 오류</td></tr>';
       }
     }
 

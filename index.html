@@ -6,6 +6,8 @@
   <title>경기도 장애인콜 대기현황</title>
 
   <style>
+    * { box-sizing: border-box; }
+
     html, body {
       margin: 0;
       padding: 0;
@@ -15,47 +17,66 @@
 
     header {
       text-align: center;
-      padding: 10px;
+      padding: 8px;
       background: #f2f2f2;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: bold;
     }
 
     #time {
       text-align: center;
-      padding: 4px;
-      font-size: 13px;
+      padding: 3px;
+      font-size: 11px;
       color: #666;
     }
 
     button {
       display: block;
-      margin: 8px auto;
-      padding: 6px 14px;
-      font-size: 14px;
+      margin: 6px auto;
+      padding: 5px 12px;
+      font-size: 12px;
+      cursor: pointer;
     }
 
     .container {
+      display: flex;
+      flex-direction: row;
       width: 100%;
+      padding: 2px;
+      gap: 4px;
+    }
+
+    .column {
+      width: 50%;
+      border: 1px solid #ccc;
       padding: 4px;
-      box-sizing: border-box;
+      border-radius: 4px;
+      background: #fafafa;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 10px; /* 매우 작게 */
     }
 
     th, td {
       border: 1px solid #ccc;
-      padding: 4px;
+      padding: 1px 1px; /* 최소 패딩 */
       text-align: center;
       white-space: nowrap;
+      line-height: 1.1;
     }
 
     th {
       background: #e5e5e5;
+      font-size: 10px;
+    }
+
+    h2 {
+      text-align: center;
+      margin: 2px 0;
+      font-size: 13px;
     }
   </style>
 </head>
@@ -67,17 +88,32 @@
   <div id="time"></div>
 
   <div class="container">
-    <table>
-      <thead>
-        <tr><th>시군명</th><th>운행</th><th>대기</th></tr>
-      </thead>
-      <tbody id="fullList"></tbody>
-    </table>
+    <div class="column">
+      <h2>시군 목록 (1열)</h2>
+      <table>
+        <thead>
+          <tr><th>시군명</th><th>운행</th><th>대기</th></tr>
+        </thead>
+        <tbody id="leftList"></tbody>
+      </table>
+    </div>
+
+    <div class="column">
+      <h2>시군 목록 (2열)</h2>
+      <table>
+        <thead>
+          <tr><th>시군명</th><th>운행</th><th>대기</th></tr>
+        </thead>
+        <tbody id="rightList"></tbody>
+      </table>
+    </div>
   </div>
 
   <script>
     async function loadData() {
-      document.getElementById("fullList").innerHTML =
+      document.getElementById("leftList").innerHTML =
+        '<tr><td colspan="3">불러오는 중...</td></tr>';
+      document.getElementById("rightList").innerHTML =
         '<tr><td colspan="3">불러오는 중...</td></tr>';
 
       try {
@@ -85,13 +121,15 @@
         const data = await res.json();
 
         if (data.RESCODE !== "0000" || !data.RESULT?.LIST) {
-          document.getElementById("fullList").innerHTML =
+          document.getElementById("leftList").innerHTML =
             '<tr><td colspan="3">데이터 오류</td></tr>';
+          document.getElementById("rightList").innerHTML = "";
           return;
         }
 
         let list = data.RESULT.LIST;
 
+        // 우선순위 8개 + 나머지 가나다순
         const priority = [
           "의정부시", "양주시", "동두천시", "포천시",
           "남양주시", "연천군", "고양시", "파주시"
@@ -105,9 +143,18 @@
           .filter(x => !priority.includes(x.LNAME))
           .sort((a, b) => a.LNAME.localeCompare(b.LNAME, "ko"));
 
-        let finalList = [...fixed, ...others];
+        let finalList = [...fixed, ...others]; // 전체 31개
 
-        document.getElementById("fullList").innerHTML = finalList
+        // 두 열로 분할
+        const mid = Math.ceil(finalList.length / 2);
+        const left = finalList.slice(0, mid);
+        const right = finalList.slice(mid);
+
+        document.getElementById("leftList").innerHTML = left
+          .map(r => `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`)
+          .join("");
+
+        document.getElementById("rightList").innerHTML = right
           .map(r => `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`)
           .join("");
 
@@ -115,8 +162,9 @@
           "조회 시각: " + new Date().toLocaleString("ko-KR");
 
       } catch (err) {
-        document.getElementById("fullList").innerHTML =
+        document.getElementById("leftList").innerHTML =
           '<tr><td colspan="3">로딩 오류</td></tr>';
+        document.getElementById("rightList").innerHTML = "";
       }
     }
 

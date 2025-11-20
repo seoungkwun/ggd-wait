@@ -6,18 +6,22 @@
   <title>경기도 장애인콜 대기현황</title>
 
   <style>
-    body {
-      font-family: Arial, sans-serif;
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
       margin: 0;
       padding: 0;
-      overflow-x: hidden; /* 가로스크롤 완전 차단 */
+      overflow-x: hidden; /* 가로 스크롤 완전 차단 */
+      font-family: Arial, sans-serif;
     }
 
     header {
       text-align: center;
-      padding: 12px;
+      padding: 8px;
       background: #f8f8f8;
-      font-size: 22px;
+      font-size: 18px;
       font-weight: bold;
     }
 
@@ -25,58 +29,58 @@
       text-align: center;
       padding: 4px;
       color: #666;
-      font-size: 13px;
+      font-size: 12px;
     }
 
     button {
       display: block;
-      margin: 8px auto;
-      padding: 8px 16px;
-      font-size: 15px;
+      margin: 6px auto;
+      padding: 6px 12px;
+      font-size: 13px;
       cursor: pointer;
     }
 
+    /* 2-column layout */
     .container {
       display: flex;
       flex-direction: row;
-      width: 100%;
-      box-sizing: border-box;
-      padding: 4px;
-      gap: 6px;
+      width: 100vw;
+      padding: 2px;
+      gap: 2px;
     }
 
     .column {
       width: 50%;
       border: 1px solid #ccc;
-      padding: 6px;
-      border-radius: 6px;
+      padding: 4px;
+      border-radius: 4px;
       background: #fafafa;
       overflow-y: auto;
-      max-height: calc(100vh - 200px);
-      box-sizing: border-box;
+      max-height: calc(100vh - 170px);
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 14px;
+      font-size: 11px; /* 전체 글자 크기 줄이기 */
     }
 
     th, td {
       border: 1px solid #ccc;
-      padding: 4px;
+      padding: 2px 1px; /* 상하/좌우 패딩 최소화 */
       text-align: center;
+      white-space: nowrap; /* 줄바꿈 방지 → 폭 예측 가능 */
     }
 
     th {
       background: #eaeaea;
-      font-size: 14px;
+      font-size: 11px;
     }
 
     h2 {
       text-align: center;
-      margin: 3px 0;
-      font-size: 17px;
+      margin: 2px 0;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -119,8 +123,8 @@
       try {
         const res = await fetch("/api/waitinfo");
         const data = await res.json();
-        if (data.RESCODE !== "0000") {
-          alert("API 오류 발생");
+        if (data.RESCODE !== "0000" || !data.RESULT?.LIST) {
+          alert("API 오류 또는 데이터 없음");
           return;
         }
 

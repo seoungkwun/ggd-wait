@@ -1,15 +1,15 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>경기도 장애인콜 대기현황</title>
   <style>
     *{box-sizing:border-box}
-    html,body{margin:0;padding:0;overflow-x:hidden;font-family:Arial,sans-serif;background:#111;color:#fff}
+    html,body{margin:0;padding:0;overflow-x:hidden;background:#111;color:#fff;font-family:Arial,sans-serif}
     header{padding:10px 8px;text-align:center;font-size:26px;font-weight:800}
-    .ver{margin-top:4px;text-align:center;font-size:13px;color:#9aa0a6}
-    .topbar{display:flex;justify-content:center;gap:10px;align-items:center;margin:8px 0 2px}
+    .ver{margin-top:2px;text-align:center;font-size:12px;color:#9aa0a6}
+    .topbar{display:flex;justify-content:center;gap:10px;align-items:center;margin:10px 0 2px}
     button{padding:8px 18px;font-size:18px;cursor:pointer;border:1px solid #666;background:#2a2a2a;color:#fff;border-radius:6px}
     #time{margin:4px 0 0;text-align:center;font-size:17px;color:#cfcfcf}
     #status{margin:6px 0 8px;text-align:center;font-size:14px;color:#ff6b6b;min-height:18px}
@@ -19,15 +19,21 @@
     table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:20px}
     th,td{border:1px solid #3f3f3f;text-align:center;padding:2px 0;white-space:nowrap;line-height:1.35}
     th{background:#222;font-size:20px}
-    /* 칸 폭 더 줄임 */
-    th:nth-child(1), td:nth-child(1){width:40%}
-    th:nth-child(2), td:nth-child(2){width:18%}
-    th:nth-child(3), td:nth-child(3){width:18%}
+    th:nth-child(1), td:nth-child(1){width:42%}
+    th:nth-child(2), td:nth-child(2){width:16%}
+    th:nth-child(3), td:nth-child(3){width:16%}
+    @media (max-width: 900px){
+      header{font-size:22px}
+      table, th{font-size:18px}
+      .container{gap:4px;padding:4px}
+      .col{padding:4px}
+      th,td{padding:2px 0}
+    }
   </style>
 </head>
 <body>
   <header>경기도 장애인콜 대기현황</header>
-  <div class="ver">버전: 2026-02-13 (NO /api) </div>
+  <div class="ver">버전: 2026-02-14 (Vercel /api 프록시 사용)</div>
 
   <div class="topbar">
     <button id="reloadBtn" type="button">🔁 새로고침</button>
@@ -75,14 +81,12 @@
     document.getElementById("right").innerHTML = "<tr><td colspan='3'>...</td></tr>";
 
     try{
-      const res = await fetch("https://ggsts.gg.go.kr/receipt/getTotalWaitInfo.json",{
-        method:"POST",
-        headers:{ "Content-Type":"application/x-www-form-urlencoded; charset=UTF-8" },
-        body:"TR=GA11130",
-        cache:"no-store"
-      });
-
+      const res = await fetch("/api/waitinfo", { cache: "no-store" });
       const data = await res.json();
+
+      if(!res.ok){
+        throw new Error(data?.error || ("HTTP " + res.status));
+      }
 
       if(!data || data.RESCODE !== "0000" || !data.RESULT || !Array.isArray(data.RESULT.LIST)){
         throw new Error("응답 형식 오류");
@@ -107,8 +111,7 @@
       setStatus("");
       setTime();
     }catch(e){
-      // 다른 도메인에서 직접 호출이 차단(CORS)될 수 있습니다.
-      setStatus("데이터 로딩 실패 (CORS/서버 차단 가능).");
+      setStatus("데이터 로딩 실패: " + (e?.message || e));
       render("left", []);
       render("right", []);
       console.error(e);

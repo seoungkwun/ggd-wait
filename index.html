@@ -20,22 +20,33 @@
       text-align: center;
       padding: 10px;
       background: #f2f2f2;
-      font-size: 26px;
+      font-size: 26px; /* 사용자 요청: +2pt 유지 */
       font-weight: bold;
     }
 
     #time {
       text-align: center;
-      padding: 4px;
-      font-size: 17px;
+      padding: 4px 10px;
+      font-size: 17px; /* +2pt 유지 */
       color: #666;
+    }
+
+    #status {
+      text-align: center;
+      padding: 2px 10px 6px;
+      font-size: 13px;
+      color: #b00020;
+      min-height: 18px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     button {
       display: block;
       margin: 8px auto;
       padding: 8px 18px;
-      font-size: 17px;
+      font-size: 17px; /* +2pt 유지 */
       cursor: pointer;
     }
 
@@ -58,21 +69,22 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 16px;
-      table-layout: fixed;
+      font-size: 16px; /* +2pt 유지 */
+      table-layout: fixed; /* 폭 강제 */
     }
 
     th, td {
       border: 1px solid #888;
-      padding: 2px 0px;
+      padding: 2px 0;      /* 좌우 패딩 최소 */
       text-align: center;
       white-space: nowrap;
-      line-height: 1.35;
+      line-height: 1.35;   /* 글씨 크기에 맞춘 행 높이 */
     }
 
-    th:nth-child(1), td:nth-child(1) { width: 40%; }
-    th:nth-child(2), td:nth-child(2) { width: 25%; }
-    th:nth-child(3), td:nth-child(3) { width: 25%; }
+    /* 칸 폭 더 줄임: 시군명 38%, 운행 20%, 대기 20% (남는 폭은 테이블 고정폭에서 균등 분배) */
+    th:nth-child(1), td:nth-child(1) { width: 38%; }
+    th:nth-child(2), td:nth-child(2) { width: 20%; }
+    th:nth-child(3), td:nth-child(3) { width: 20%; }
 
     th {
       background: #e5e5e5;
@@ -82,7 +94,7 @@
     h2 {
       text-align: center;
       margin: 2px 0;
-      font-size: 19px;
+      font-size: 19px; /* +2pt 유지 */
     }
   </style>
 </head>
@@ -92,6 +104,7 @@
 
   <button onclick="loadData()">🔁 새로고침</button>
   <div id="time"></div>
+  <div id="status"></div>
 
   <div class="container">
     <div class="column">
@@ -116,59 +129,90 @@
   </div>
 
   <script>
-    async function loadData() {
+    const PRIORITY = [
+      "의정부시", "양주시", "동두천시", "포천시",
+      "남양주시", "연천군", "고양시", "파주시"
+    ];
+
+    function setStatus(msg) {
+      document.getElementById("status").innerText = msg || "";
+    }
+
+    function setLoading() {
       document.getElementById("leftList").innerHTML =
         '<tr><td colspan="3">불러오는 중...</td></tr>';
       document.getElementById("rightList").innerHTML =
         '<tr><td colspan="3">불러오는 중...</td></tr>';
+      setStatus("");
+    }
+
+    async function fetchWaitInfo() {
+      // NOTE: Vercel 서버리스(/api/waitinfo.js)가 반드시 있어야 합니다.
+      const res = await fetch("/api/waitinfo", { cache: "no-store" });
+
+      // fetch는 404/500에서도 throw 하지 않으므로, 반드시 상태코드 확인
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        // HTML이 돌아오는 경우가 많으니 앞부분만 표시
+        const preview = (text || "").replace(/\s+/g, " ").slice(0, 120);
+        throw new Error(`API HTTP ${res.status} ${res.statusText} (/api/waitinfo) ${preview ? "- " + preview : ""}`);
+      }
+
+      // 정상일 때만 JSON 파싱
+      return await res.json();
+    }
+
+    function splitTwoColumns(finalList) {
+      const mid = Math.ceil(finalList.length / 2);
+      return [finalList.slice(0, mid), finalList.slice(mid)];
+    }
+
+    function render(tbodyId, rows) {
+      document.getElementById(tbodyId).innerHTML = rows
+        .map(r => `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`)
+        .join("");
+    }
+
+    async function loadData() {
+      setLoading();
 
       try {
-        const res = await fetch("/api/waitinfo");
-        const data = await res.json();
+        const data = await fetchWaitInfo();
 
-        if (data.RESCODE !== "0000" || !data.RESULT?.LIST) {
-          document.getElementById("leftList").innerHTML =
-            '<tr><td colspan="3">데이터 오류</td></tr>';
-          document.getElementById("rightList").innerHTML = "";
-          return;
+        if (data.RESCODE !== "0000" || !data.RESULT || !Array.isArray(data.RESULT.LIST)) {
+          throw new Error(`응답 형식 오류: RESCODE=${data && data.RESCODE}`);
         }
 
-        let list = data.RESULT.LIST;
+        const list = data.RESULT.LIST;
 
-        const priority = [
-          "의정부시", "양주시", "동두천시", "포천시",
-          "남양주시", "연천군", "고양시", "파주시"
-        ];
+        const fixed = list
+          .filter(x => PRIORITY.includes(x.LNAME))
+          .sort((a, b) => PRIORITY.indexOf(a.LNAME) - PRIORITY.indexOf(b.LNAME));
 
-        let fixed = list
-          .filter(x => priority.includes(x.LNAME))
-          .sort((a, b) => priority.indexOf(a.LNAME) - priority.indexOf(b.LNAME));
-
-        let others = list
-          .filter(x => !priority.includes(x.LNAME))
+        const others = list
+          .filter(x => !PRIORITY.includes(x.LNAME))
           .sort((a, b) => a.LNAME.localeCompare(b.LNAME, "ko"));
 
-        let finalList = [...fixed, ...others];
+        const finalList = [...fixed, ...others];
 
-        const mid = Math.ceil(finalList.length / 2);
-        const left = finalList.slice(0, mid);
-        const right = finalList.slice(mid);
+        const [left, right] = splitTwoColumns(finalList);
 
-        document.getElementById("leftList").innerHTML = left
-          .map(r => `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`)
-          .join("");
-
-        document.getElementById("rightList").innerHTML = right
-          .map(r => `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`)
-          .join("");
+        render("leftList", left);
+        render("rightList", right);
 
         document.getElementById("time").innerText =
           "조회 시각: " + new Date().toLocaleString("ko-KR");
 
+        // “제대로 안됨” 케이스를 빠르게 확인하기 위해, /api 존재 여부 안내
+        // (정상 작동 중이면 표시되지 않음)
+        setStatus("");
+
       } catch (err) {
+        render("leftList", []);
+        render("rightList", []);
         document.getElementById("leftList").innerHTML =
           '<tr><td colspan="3">로딩 오류</td></tr>';
-        document.getElementById("rightList").innerHTML = "";
+        setStatus(err && err.message ? err.message : String(err));
       }
     }
 

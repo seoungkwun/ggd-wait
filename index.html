@@ -1,108 +1,122 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>경기도 장애인콜 대기현황</title>
-
-<style>
-body{margin:0;background:#111;color:#fff;font-family:Arial}
-header{text-align:center;font-size:26px;padding:10px}
-button{display:block;margin:10px auto;padding:8px 20px;font-size:18px}
-.container{display:flex;width:100%;gap:4px;padding:4px}
-.column{width:50%}
-table{width:100%;border-collapse:collapse;font-size:18px}
-th,td{border:1px solid #444;padding:4px;text-align:center}
-th{background:#222}
-#status{text-align:center;color:#ff6b6b;margin:5px}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>경기도 장애인콜 대기현황</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;overflow-x:hidden;font-family:Arial,sans-serif;background:#111;color:#fff}
+    header{padding:10px 8px;text-align:center;font-size:26px;font-weight:800}
+    .ver{margin-top:4px;text-align:center;font-size:13px;color:#9aa0a6}
+    .topbar{display:flex;justify-content:center;gap:10px;align-items:center;margin:8px 0 2px}
+    button{padding:8px 18px;font-size:18px;cursor:pointer;border:1px solid #666;background:#2a2a2a;color:#fff;border-radius:6px}
+    #time{margin:4px 0 0;text-align:center;font-size:17px;color:#cfcfcf}
+    #status{margin:6px 0 8px;text-align:center;font-size:14px;color:#ff6b6b;min-height:18px}
+    .container{display:flex;gap:6px;padding:6px}
+    .col{width:50%;background:#161616;border:1px solid #333;border-radius:8px;padding:6px}
+    h2{margin:0 0 6px;text-align:center;font-size:19px}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:20px}
+    th,td{border:1px solid #3f3f3f;text-align:center;padding:2px 0;white-space:nowrap;line-height:1.35}
+    th{background:#222;font-size:20px}
+    /* 칸 폭 더 줄임 */
+    th:nth-child(1), td:nth-child(1){width:40%}
+    th:nth-child(2), td:nth-child(2){width:18%}
+    th:nth-child(3), td:nth-child(3){width:18%}
+  </style>
 </head>
-
 <body>
+  <header>경기도 장애인콜 대기현황</header>
+  <div class="ver">버전: 2026-02-13 (NO /api) </div>
 
-<header>경기도 장애인콜 대기현황</header>
-<button onclick="loadData()">🔁 새로고침</button>
-<div id="status"></div>
-<div id="time" style="text-align:center;"></div>
+  <div class="topbar">
+    <button id="reloadBtn" type="button">🔁 새로고침</button>
+  </div>
+  <div id="time"></div>
+  <div id="status"></div>
 
-<div class="container">
-<div class="column">
-<table>
-<thead><tr><th>시군명</th><th>운행</th><th>대기</th></tr></thead>
-<tbody id="left"></tbody>
-</table>
-</div>
-
-<div class="column">
-<table>
-<thead><tr><th>시군명</th><th>운행</th><th>대기</th></tr></thead>
-<tbody id="right"></tbody>
-</table>
-</div>
-</div>
+  <div class="container">
+    <div class="col">
+      <h2>시군 목록 (1열)</h2>
+      <table>
+        <thead><tr><th>시군명</th><th>운행</th><th>대기</th></tr></thead>
+        <tbody id="left"></tbody>
+      </table>
+    </div>
+    <div class="col">
+      <h2>시군 목록 (2열)</h2>
+      <table>
+        <thead><tr><th>시군명</th><th>운행</th><th>대기</th></tr></thead>
+        <tbody id="right"></tbody>
+      </table>
+    </div>
+  </div>
 
 <script>
+  const PRIORITY = ["의정부시","양주시","동두천시","포천시","남양주시","연천군","고양시","파주시"];
 
-const PRIORITY=[
-"의정부시","양주시","동두천시","포천시",
-"남양주시","연천군","고양시","파주시"
-];
+  function setStatus(msg){ document.getElementById("status").innerText = msg || ""; }
+  function setTime(){ document.getElementById("time").innerText = "조회 시각: " + new Date().toLocaleString("ko-KR"); }
 
-async function loadData(){
-document.getElementById("status").innerText="불러오는 중...";
+  function render(id, rows){
+    const el = document.getElementById(id);
+    if(!rows || !rows.length){
+      el.innerHTML = "<tr><td colspan='3'>-</td></tr>";
+      return;
+    }
+    el.innerHTML = rows.map(r =>
+      `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`
+    ).join("");
+  }
 
-try{
-const res=await fetch(
-"https://ggsts.gg.go.kr/receipt/getTotalWaitInfo.json",
-{
-method:"POST",
-headers:{
-"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8"
-},
-body:"TR=GA11130"
-});
+  async function loadData(){
+    setStatus("불러오는 중...");
+    document.getElementById("left").innerHTML = "<tr><td colspan='3'>로딩중...</td></tr>";
+    document.getElementById("right").innerHTML = "<tr><td colspan='3'>...</td></tr>";
 
-const data=await res.json();
+    try{
+      const res = await fetch("https://ggsts.gg.go.kr/receipt/getTotalWaitInfo.json",{
+        method:"POST",
+        headers:{ "Content-Type":"application/x-www-form-urlencoded; charset=UTF-8" },
+        body:"TR=GA11130",
+        cache:"no-store"
+      });
 
-if(data.RESCODE!=="0000"){
-throw new Error("응답 오류");
-}
+      const data = await res.json();
 
-let list=data.RESULT.LIST;
+      if(!data || data.RESCODE !== "0000" || !data.RESULT || !Array.isArray(data.RESULT.LIST)){
+        throw new Error("응답 형식 오류");
+      }
 
-const fixed=list
-.filter(x=>PRIORITY.includes(x.LNAME))
-.sort((a,b)=>PRIORITY.indexOf(a.LNAME)-PRIORITY.indexOf(b.LNAME));
+      const list = data.RESULT.LIST;
 
-const others=list
-.filter(x=>!PRIORITY.includes(x.LNAME))
-.sort((a,b)=>a.LNAME.localeCompare(b.LNAME,"ko"));
+      const fixed = list
+        .filter(x => PRIORITY.includes(x.LNAME))
+        .sort((a,b) => PRIORITY.indexOf(a.LNAME) - PRIORITY.indexOf(b.LNAME));
 
-const final=[...fixed,...others];
+      const others = list
+        .filter(x => !PRIORITY.includes(x.LNAME))
+        .sort((a,b) => a.LNAME.localeCompare(b.LNAME, "ko"));
 
-const mid=Math.ceil(final.length/2);
+      const finalList = [...fixed, ...others];
+      const mid = Math.ceil(finalList.length/2);
 
-document.getElementById("left").innerHTML=
-final.slice(0,mid).map(r=>
-`<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`
-).join("");
+      render("left", finalList.slice(0, mid));
+      render("right", finalList.slice(mid));
 
-document.getElementById("right").innerHTML=
-final.slice(mid).map(r=>
-`<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`
-).join("");
+      setStatus("");
+      setTime();
+    }catch(e){
+      // 다른 도메인에서 직접 호출이 차단(CORS)될 수 있습니다.
+      setStatus("데이터 로딩 실패 (CORS/서버 차단 가능).");
+      render("left", []);
+      render("right", []);
+      console.error(e);
+    }
+  }
 
-document.getElementById("status").innerText="";
-document.getElementById("time").innerText=
-"조회 시각: "+new Date().toLocaleString("ko-KR");
-
-}catch(e){
-document.getElementById("status").innerText="데이터 로딩 실패";
-}
-}
-
-loadData();
+  document.getElementById("reloadBtn").addEventListener("click", loadData);
+  loadData();
 </script>
-
 </body>
 </html>

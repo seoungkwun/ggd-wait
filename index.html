@@ -59,6 +59,7 @@
   </div>
 
 <script>
+  // 기존 우선표시(고정 순서)
   const PRIORITY = ["의정부시","양주시","동두천시","포천시","남양주시","연천군","고양시","파주시"];
 
   function setStatus(msg){ document.getElementById("status").innerText = msg || ""; }
@@ -71,7 +72,7 @@
       return;
     }
     el.innerHTML = rows.map(r =>
-      `<tr><td>${r.LNAME}</td><td>${r.CUR_VEHICLE}</td><td>${r.NUM_WAIT}</td></tr>`
+      `<tr><td>${r.NAME}</td><td>${Number(r.CAR_CNT).toLocaleString("ko-KR")}</td><td>${Number(r.REQ_CNT).toLocaleString("ko-KR")}</td></tr>`
     ).join("");
   }
 
@@ -88,23 +89,25 @@
         throw new Error(data?.error || ("HTTP " + res.status));
       }
 
-      if(!data || data.RESCODE !== "0000" || !data.RESULT || !Array.isArray(data.RESULT.LIST)){
-        throw new Error("응답 형식 오류");
+      if(!Array.isArray(data)){
+        throw new Error("응답 형식 오류(배열 아님)");
       }
 
-      const list = data.RESULT.LIST;
+      const list = data;
 
+      // 우선지역은 고정 순서로 위에
       const fixed = list
-        .filter(x => PRIORITY.includes(x.LNAME))
-        .sort((a,b) => PRIORITY.indexOf(a.LNAME) - PRIORITY.indexOf(b.LNAME));
+        .filter(x => PRIORITY.includes(x.NAME))
+        .sort((a,b) => PRIORITY.indexOf(a.NAME) - PRIORITY.indexOf(b.NAME));
 
+      // 나머지는 가나다순(기존 방식 유지)
       const others = list
-        .filter(x => !PRIORITY.includes(x.LNAME))
-        .sort((a,b) => a.LNAME.localeCompare(b.LNAME, "ko"));
+        .filter(x => !PRIORITY.includes(x.NAME))
+        .sort((a,b) => String(a.NAME).localeCompare(String(b.NAME), "ko"));
 
       const finalList = [...fixed, ...others];
-      const mid = Math.ceil(finalList.length/2);
 
+      const mid = Math.ceil(finalList.length/2);
       render("left", finalList.slice(0, mid));
       render("right", finalList.slice(mid));
 

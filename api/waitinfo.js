@@ -4,6 +4,21 @@ export const config = {
 
 export default async function handler(req, res) {
   try {
+    // 1️⃣ 세션 생성
+    const sessionRes = await fetch(
+      "https://ggsts.gg.go.kr/",
+      { method: "GET" }
+    );
+
+    const cookies = sessionRes.headers.get("set-cookie");
+
+    if (!cookies) {
+      return res.status(500).json({
+        error: "세션 쿠키 생성 실패",
+      });
+    }
+
+    // 2️⃣ 실제 데이터 요청 (쿠키 포함)
     const response = await fetch(
       "https://ggsts.gg.go.kr/receipt/getTotalWaitInfo.json",
       {
@@ -11,8 +26,7 @@ export default async function handler(req, res) {
         headers: {
           "Content-Type":
             "application/x-www-form-urlencoded; charset=UTF-8",
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Cookie": cookies,
           "Referer": "https://ggsts.gg.go.kr/",
           "Origin": "https://ggsts.gg.go.kr",
         },
@@ -24,7 +38,7 @@ export default async function handler(req, res) {
 
     if (!text) {
       return res.status(500).json({
-        error: "외부 API가 빈 응답 반환",
+        error: "빈 응답 반환",
       });
     }
 

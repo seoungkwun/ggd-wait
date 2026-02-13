@@ -50,7 +50,7 @@ export default async function handler(req, res) {
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
         Cookie: cookieHeader,
       },
-      body: "TR=GA11130",
+      body: "tr=W9401",
     });
 
     const text = (await apiRes.text())?.trim();
